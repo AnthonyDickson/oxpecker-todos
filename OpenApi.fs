@@ -7,16 +7,16 @@ open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
 
-let private isOptionType (t: System.Type) : bool =
+let private isOptionType (t : System.Type) : bool =
     if t.IsGenericType then
-        let definition = t.GetGenericTypeDefinition()
+        let definition = t.GetGenericTypeDefinition ()
         definition = typedefof<option<_>> || definition = typedefof<voption<_>>
     else
         false
 
-type FSharpRecordSchemaTransformer() =
+type FSharpRecordSchemaTransformer () =
     interface IOpenApiSchemaTransformer with
-        member _.TransformAsync(schema, context, _cancellationToken: CancellationToken) =
+        member _.TransformAsync (schema, context, _cancellationToken : CancellationToken) =
             let jsonType = context.JsonTypeInfo.Type
 
             if FSharpType.IsRecord jsonType then
@@ -35,13 +35,14 @@ type FSharpRecordSchemaTransformer() =
                 && context.JsonPropertyInfo.PropertyType = typeof<string>
             then
                 schema.Type <- JsonSchemaType.String
+
                 if not (isNull schema.OneOf) then
-                    schema.OneOf.Clear()
+                    schema.OneOf.Clear ()
 
                 if not (isNull schema.AnyOf) then
-                    schema.AnyOf.Clear()
+                    schema.AnyOf.Clear ()
 
                 if not (isNull schema.AllOf) then
-                    schema.AllOf.Clear()
+                    schema.AllOf.Clear ()
 
             Task.CompletedTask
