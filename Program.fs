@@ -1,19 +1,19 @@
 module OxpeckerApi.Program
 
-open System
-open System.Collections.Generic
-open System.Threading.Tasks
 open Microsoft.AspNetCore.Authentication
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.OpenApi
 open Oxpecker
+open OxpeckerApi.Auth
+open OxpeckerApi.Handlers
+open OxpeckerApi.Models
+open OxpeckerApi.OpenApi
 open Oxpecker.OpenApi
 open Scalar.AspNetCore
-open OxpeckerApi.Auth
-open OxpeckerApi.Models
-open OxpeckerApi.Handlers
-open OxpeckerApi.OpenApi
+open System
+open System.Collections.Generic
+open System.Threading.Tasks
 
 let private bearerRequirement () =
     let schemeRef = OpenApiSecuritySchemeReference("bearerAuth", null, "SecuritySchemes")

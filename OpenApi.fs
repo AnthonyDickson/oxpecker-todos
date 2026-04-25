@@ -1,11 +1,11 @@
 module OxpeckerApi.OpenApi
 
-open System.Collections.Generic
-open System.Threading
-open System.Threading.Tasks
 open Microsoft.AspNetCore.OpenApi
 open Microsoft.FSharp.Reflection
 open Microsoft.OpenApi
+open System.Collections.Generic
+open System.Threading
+open System.Threading.Tasks
 
 let private isOptionType (t: System.Type) =
     if t.IsGenericType then

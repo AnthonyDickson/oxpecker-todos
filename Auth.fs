@@ -1,11 +1,11 @@
 module OxpeckerApi.Auth
 
-open System
-open System.Security.Claims
-open System.Text.Encodings.Web
 open Microsoft.AspNetCore.Authentication
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
+open System
+open System.Security.Claims
+open System.Text.Encodings.Web
 
 [<Literal>]
 let DemoScheme = "DemoBearer"

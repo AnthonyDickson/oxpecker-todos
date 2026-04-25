@@ -1,11 +1,11 @@
 module OxpeckerApi.Handlers
 
-open System
-open System.Collections.Generic
 open Microsoft.AspNetCore.Http
 open Oxpecker
 open OxpeckerApi.Auth
 open OxpeckerApi.Models
+open System
+open System.Collections.Generic
 
 let private notFound msg : EndpointHandler =
     fun ctx ->
