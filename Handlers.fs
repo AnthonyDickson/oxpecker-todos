@@ -1,12 +1,10 @@
 module OxpeckerApi.Handlers
 
-open Microsoft.AspNetCore.Http
 open Oxpecker
 open OxpeckerApi.Auth
 open OxpeckerApi.Models
-open OxpeckerApi.TodoStore
+open OxpeckerApi
 open System
-open System.Collections.Generic
 
 type CreateTodoRequest = { Title : string }
 
@@ -41,7 +39,7 @@ let requireAuthenticated : EndpointMiddleware =
 // ── Handlers ─────────────────────────────────────────────────────────────────
 
 /// GET /todos — list all items
-let getTodos (store : TodoStore) : EndpointHandler =
+let getTodos (store : TodoStore.t) : EndpointHandler =
     fun ctx ->
         task {
             let! items = TodoStore.getAll store
@@ -49,7 +47,7 @@ let getTodos (store : TodoStore) : EndpointHandler =
         }
 
 /// GET /todos/{id} — get one item
-let getTodo (store : TodoStore) (id : Guid) : EndpointHandler =
+let getTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
     fun ctx ->
         task {
             let! todo = TodoStore.get store id
@@ -60,7 +58,7 @@ let getTodo (store : TodoStore) (id : Guid) : EndpointHandler =
         }
 
 /// GET /private-todos — protected demo route
-let getPrivateTodos (store : TodoStore) : EndpointHandler =
+let getPrivateTodos (store : TodoStore.t) : EndpointHandler =
     fun ctx ->
         task {
             let! items = TodoStore.getAll store
@@ -68,7 +66,7 @@ let getPrivateTodos (store : TodoStore) : EndpointHandler =
         }
 
 /// POST /todos — create an item
-let createTodo (store : TodoStore) : EndpointHandler =
+let createTodo (store : TodoStore.t) : EndpointHandler =
     fun ctx ->
         task {
             let! req = ctx.BindJson<CreateTodoRequest> ()
@@ -95,7 +93,7 @@ let createTodo (store : TodoStore) : EndpointHandler =
         }
 
 /// PUT /todos/{id} — replace an item
-let updateTodo (store : TodoStore) (id : Guid) : EndpointHandler =
+let updateTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
     fun ctx ->
         task {
             let! req = ctx.BindJson<UpdateTodoRequest> ()
@@ -117,7 +115,7 @@ let updateTodo (store : TodoStore) (id : Guid) : EndpointHandler =
         }
 
 /// DELETE /todos/{id} — remove an item
-let deleteTodo (store : TodoStore) (id : Guid) : EndpointHandler =
+let deleteTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
     fun ctx ->
         task {
             let! deleted = TodoStore.delete store id

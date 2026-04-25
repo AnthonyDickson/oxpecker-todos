@@ -1,7 +1,6 @@
 module OxpeckerApi.Models
 
 open System
-open System.Collections.Generic
 
 // ── Domain types ──────────────────────────────────────────────────────────────
 

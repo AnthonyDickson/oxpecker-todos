@@ -1,3 +1,4 @@
+[<RequireQualifiedAccess>]
 module OxpeckerApi.TodoStore
 
 open System // For `Guid`
@@ -11,9 +12,9 @@ type TodoMessage =
     | Update of Guid * title : string * completed : bool * AsyncReplyChannel<TodoItem option>
     | Delete of Guid * AsyncReplyChannel<bool>
 
-type TodoStore = MailboxProcessor<TodoMessage>
+type t = MailboxProcessor<TodoMessage>
 
-let start () : TodoStore =
+let start () : t =
     MailboxProcessor.Start (fun inbox ->
         let rec loop (state : Map<Guid, TodoItem>) =
             async {
@@ -52,15 +53,15 @@ let start () : TodoStore =
 
         loop Map.empty)
 
-let getAll (todoStore : TodoStore) : Async<TodoItem list> = todoStore.PostAndAsyncReply GetAll
+let getAll (todoStore : t) : Async<TodoItem list> = todoStore.PostAndAsyncReply GetAll
 
-let get (todoStore : TodoStore) (todoId : Guid) : Async<TodoItem option> =
+let get (todoStore : t) (todoId : Guid) : Async<TodoItem option> =
     todoStore.PostAndAsyncReply (fun reply -> Get (todoId, reply))
 
-let upsert (todoStore : TodoStore) (todo : TodoItem) : unit = todoStore.Post (Upsert todo)
+let upsert (todoStore : t) (todo : TodoItem) : unit = todoStore.Post (Upsert todo)
 
-let update (todoStore : TodoStore) (id : Guid) (title : string) (completed : bool) : Async<TodoItem option> =
+let update (todoStore : t) (id : Guid) (title : string) (completed : bool) : Async<TodoItem option> =
     todoStore.PostAndAsyncReply (fun reply -> Update (id, title, completed, reply))
 
-let delete (todoStore : TodoStore) (todoId : Guid) : Async<bool> =
+let delete (todoStore : t) (todoId : Guid) : Async<bool> =
     todoStore.PostAndAsyncReply (fun reply -> Delete (todoId, reply))

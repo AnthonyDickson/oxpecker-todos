@@ -5,14 +5,13 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.OpenApi
 open Oxpecker
+open OxpeckerApi
 open OxpeckerApi.Auth
 open OxpeckerApi.Handlers
 open OxpeckerApi.Models
 open OxpeckerApi.OpenApi
-open OxpeckerApi.TodoStore
 open Oxpecker.OpenApi
 open Scalar.AspNetCore
-open System
 open System.Collections.Generic
 open System.Threading.Tasks
 
@@ -24,7 +23,7 @@ let private bearerRequirement () : OpenApiSecurityRequirement =
     requirement[schemeRef] <- ResizeArray<string> ()
     requirement
 
-let endpoints (store : TodoStore) : Endpoint list = [
+let endpoints (store : TodoStore.t) : Endpoint list = [
     GET [
         route "/todos" (getTodos store)
         |> addOpenApi (
