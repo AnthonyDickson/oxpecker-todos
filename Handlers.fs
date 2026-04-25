@@ -4,14 +4,31 @@ open System
 open System.Collections.Generic
 open Microsoft.AspNetCore.Http
 open Oxpecker
+open OxpeckerApi.Auth
 open OxpeckerApi.Models
-
-// ── In-memory store (replace with a real DB in production) ───────────────────
 
 let private notFound msg : EndpointHandler =
     fun ctx ->
         ctx.SetStatusCode 404
         ctx.WriteJson { Error = "Not Found"; Details = msg }
+
+let requireAuthenticated : EndpointMiddleware =
+    fun next ctx ->
+        task {
+            if
+                not (isNull ctx.User)
+                && not (isNull ctx.User.Identity)
+                && ctx.User.Identity.IsAuthenticated
+            then
+                return! next ctx
+            else
+                ctx.SetStatusCode 401
+                return!
+                    ctx.WriteJson {
+                        Error = "Unauthorized"
+                        Details = $"Provide Authorization: Bearer {DemoToken}"
+                    }
+        }
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -27,6 +44,12 @@ let getTodo (store: Store) (id: Guid) : EndpointHandler =
         match store.TryGetValue id with
         | true, item -> ctx.WriteJson item
         | _          -> notFound $"Todo {id} not found" ctx
+
+/// GET /private-todos — protected demo route
+let getPrivateTodos (store: Store) : EndpointHandler =
+    fun ctx ->
+        let items = store.Values |> Seq.toArray
+        ctx.WriteJson items
 
 /// POST /todos — create an item
 let createTodo (store: Store): EndpointHandler =
