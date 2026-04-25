@@ -11,11 +11,3 @@ type TodoItem = {
     Completed : bool
     CreatedAt : DateTime
 }
-
-type CreateTodoRequest = { Title : string }
-
-type UpdateTodoRequest = { Title : string; Completed : bool }
-
-type ApiError = { Error : string; Details : string }
-
-type Store = Dictionary<Guid, TodoItem>

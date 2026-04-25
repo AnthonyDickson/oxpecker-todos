@@ -9,6 +9,7 @@ open OxpeckerApi.Auth
 open OxpeckerApi.Handlers
 open OxpeckerApi.Models
 open OxpeckerApi.OpenApi
+open OxpeckerApi.TodoStore
 open Oxpecker.OpenApi
 open Scalar.AspNetCore
 open System
@@ -23,7 +24,7 @@ let private bearerRequirement () : OpenApiSecurityRequirement =
     requirement[schemeRef] <- ResizeArray<string> ()
     requirement
 
-let endpoints (store : Store) : Endpoint list = [
+let endpoints (store : TodoStore) : Endpoint list = [
     GET [
         route "/todos" (getTodos store)
         |> addOpenApi (
@@ -130,7 +131,7 @@ let main (args : string array) : int =
 
     builder.Services
         .AddAuthentication(DemoScheme)
-        .AddScheme<AuthenticationSchemeOptions, DemoBearerAuthHandler>(DemoScheme, fun _ -> ())
+        .AddScheme<AuthenticationSchemeOptions, DemoBearerAuthHandler>(DemoScheme, ignore)
         .Services.AddAuthorization()
         .AddRouting()
         .AddOxpecker()
@@ -169,7 +170,7 @@ let main (args : string array) : int =
         |> ignore)
     |> ignore
 
-    let store = Dictionary<Guid, TodoItem> ()
+    let store = TodoStore.start ()
 
     app.UseRouting () |> ignore
     app.UseAuthentication () |> ignore
