@@ -1,5 +1,7 @@
 module OxpeckerApi.Program
 
+open System
+open System.Collections.Generic
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
@@ -10,9 +12,9 @@ open OxpeckerApi.Models
 open OxpeckerApi.Handlers
 open OxpeckerApi.OpenApi
 
-let endpoints = [
+let endpoints store = [
     GET [
-        route "/todos" getTodos
+        route "/todos" (getTodos store)
         |> addOpenApi (OpenApiConfig(
             responseBodies = [| ResponseBody typeof<TodoItem array> |],
             configureOperation = fun op _ _ ->
@@ -21,7 +23,7 @@ let endpoints = [
                 Task.CompletedTask
         ))
 
-        routef "/todos/{%O:guid}" getTodo
+        routef "/todos/{%O:guid}" (getTodo store)
         |> addOpenApi (OpenApiConfig(
             responseBodies = [|
                 ResponseBody typeof<TodoItem>
@@ -35,7 +37,7 @@ let endpoints = [
     ]
 
     POST [
-        route "/todos" createTodo
+        route "/todos" (createTodo store)
         |> addOpenApi (OpenApiConfig(
             requestBody = RequestBody typeof<CreateTodoRequest>,
             responseBodies = [|
@@ -50,7 +52,7 @@ let endpoints = [
     ]
 
     PUT [
-        routef "/todos/{%O:guid}" updateTodo
+        routef "/todos/{%O:guid}" (updateTodo store)
         |> addOpenApi (OpenApiConfig(
             requestBody = RequestBody typeof<UpdateTodoRequest>,
             responseBodies = [|
@@ -66,7 +68,7 @@ let endpoints = [
     ]
 
     DELETE [
-        routef "/todos/{%O:guid}" deleteTodo
+        routef "/todos/{%O:guid}" (deleteTodo store)
         |> addOpenApi (OpenApiConfig(
             responseBodies = [|
                 ResponseBody(typeof<unit>, statusCode = 204)
@@ -105,7 +107,9 @@ let main args =
     )
     |> ignore
 
+    let store = Dictionary<Guid, TodoItem>()
+
     app.UseRouting() |> ignore
-    app.UseOxpecker endpoints |> ignore
+    app.UseOxpecker (endpoints store) |> ignore
     app.Run()
     0

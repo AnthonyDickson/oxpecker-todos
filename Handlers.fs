@@ -8,8 +8,6 @@ open OxpeckerApi.Models
 
 // ── In-memory store (replace with a real DB in production) ───────────────────
 
-let private store = Dictionary<Guid, TodoItem>()
-
 let private notFound msg : EndpointHandler =
     fun ctx ->
         ctx.SetStatusCode 404
@@ -18,20 +16,20 @@ let private notFound msg : EndpointHandler =
 // ── Handlers ─────────────────────────────────────────────────────────────────
 
 /// GET /todos — list all items
-let getTodos : EndpointHandler =
+let getTodos (store: Store) : EndpointHandler =
     fun ctx ->
         let items = store.Values |> Seq.toArray
         ctx.WriteJson items
 
 /// GET /todos/{id} — get one item
-let getTodo (id: Guid) : EndpointHandler =
+let getTodo (store: Store) (id: Guid) : EndpointHandler =
     fun ctx ->
         match store.TryGetValue id with
         | true, item -> ctx.WriteJson item
         | _          -> notFound $"Todo {id} not found" ctx
 
 /// POST /todos — create an item
-let createTodo : EndpointHandler =
+let createTodo (store: Store): EndpointHandler =
     fun ctx -> task {
         let! req = ctx.BindJson<CreateTodoRequest>()
 
@@ -51,7 +49,7 @@ let createTodo : EndpointHandler =
     }
 
 /// PUT /todos/{id} — replace an item
-let updateTodo (id: Guid) : EndpointHandler =
+let updateTodo (store: Store)(id: Guid) : EndpointHandler =
     fun ctx -> task {
         match store.TryGetValue id with
         | false, _ ->
@@ -69,7 +67,7 @@ let updateTodo (id: Guid) : EndpointHandler =
     }
 
 /// DELETE /todos/{id} — remove an item
-let deleteTodo (id: Guid) : EndpointHandler =
+let deleteTodo (store: Store)(id: Guid) : EndpointHandler =
     fun ctx ->
         if store.Remove id then
             ctx.SetStatusCode 204

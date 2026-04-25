@@ -1,6 +1,7 @@
 module OxpeckerApi.Models
 
 open System
+open System.Collections.Generic
 
 // ── Domain types ──────────────────────────────────────────────────────────────
 
@@ -24,3 +25,5 @@ type ApiError = {
     Error   : string
     Details : string
 }
+
+type Store = Dictionary<Guid, TodoItem>
