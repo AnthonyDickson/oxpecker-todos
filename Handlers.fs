@@ -7,7 +7,7 @@ open OxpeckerApi.Models
 open System
 open System.Collections.Generic
 
-let private notFound msg : EndpointHandler =
+let private notFound (msg: string) : EndpointHandler =
     fun ctx ->
         ctx.SetStatusCode 404
         ctx.WriteJson { Error = "Not Found"; Details = msg }

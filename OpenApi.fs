@@ -7,7 +7,7 @@ open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
 
-let private isOptionType (t: System.Type) =
+let private isOptionType (t: System.Type) : bool =
     if t.IsGenericType then
         let definition = t.GetGenericTypeDefinition()
         definition = typedefof<option<_>> || definition = typedefof<voption<_>>

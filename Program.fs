@@ -15,13 +15,13 @@ open System
 open System.Collections.Generic
 open System.Threading.Tasks
 
-let private bearerRequirement () =
+let private bearerRequirement () : OpenApiSecurityRequirement =
     let schemeRef = OpenApiSecuritySchemeReference("bearerAuth", null, "SecuritySchemes")
     let requirement = OpenApiSecurityRequirement()
     requirement[schemeRef] <- ResizeArray<string>()
     requirement
 
-let endpoints store = [
+let endpoints (store: Store) : Endpoint list = [
     GET [
         route "/todos" (getTodos store)
         |> addOpenApi (OpenApiConfig(
@@ -105,7 +105,7 @@ let endpoints store = [
 ]
 
 [<EntryPoint>]
-let main args =
+let main (args: string array) : int =
     let builder = WebApplication.CreateBuilder args
 
     builder.Services
