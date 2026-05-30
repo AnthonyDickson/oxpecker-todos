@@ -11,13 +11,13 @@ An F# .NET 10 web API example using the Oxpecker web framework. Implements a tod
 dotnet build
 
 # Run
-dotnet run
+dotnet run --project src/OxpeckerApi
 
 # Format code (fantomas)
 dotnet fantomas .
 
 # Lint
-dotnet fsharplint lint OxpeckerApi.fsproj
+dotnet fsharplint lint OxpeckerApi.slnx
 ```
 
 ### Development Environment
@@ -34,24 +34,34 @@ Local .NET tools (fantomas, fsharplint) are defined in `.config/dotnet-tools.jso
 
 F# compiles files in order. The `.fsproj` defines this sequence — **new files must be inserted at the correct position**:
 
-| File                | Purpose                                                  |
-| ------------------- | -------------------------------------------------------- |
-| `Auth.fs`           | Demo bearer authentication handler                       |
-| `Middleware.fs`     | Shared middleware (`notFound`, `requireAuthenticated`)   |
-| `OpenApi.fs`        | F#-aware OpenAPI schema transformers                     |
-| `Program.fs`        | App composition: DI, middleware pipeline                 |
-| `Todos/Handlers.fs` | CRUD endpoint handlers                                   |
-| `Todos/Models.fs`   | Domain types (`TodoItem`) + request/error DTOs           |
-| `Todos/Routes.fs`   | Route definitions + OpenAPI metadata for the Todos slice |
-| `Todos/Store.fs`    | In-memory store via `MailboxProcessor`                   |
+Source code lives under `src/OxpeckerApi/`. The solution file is `OxpeckerApi.slnx` (the newer XML-based format).
+
+| File                               | Purpose                                                  |
+| ---------------------------------- | -------------------------------------------------------- |
+| `src/OxpeckerApi/Auth.fs`          | Demo bearer authentication handler                       |
+| `src/OxpeckerApi/Middleware.fs`    | Shared middleware (`notFound`, `requireAuthenticated`)   |
+| `src/OxpeckerApi/OpenApi.fs`       | F#-aware OpenAPI schema transformers                     |
+| `src/OxpeckerApi/Program.fs`       | App composition: DI, middleware pipeline                 |
+| `src/OxpeckerApi/Todos/Handlers.fs`| CRUD endpoint handlers                                   |
+| `src/OxpeckerApi/Todos/Models.fs`  | Domain types (`TodoItem`) + request/error DTOs           |
+| `src/OxpeckerApi/Todos/Routes.fs`  | Route definitions + OpenAPI metadata for the Todos slice |
+| `src/OxpeckerApi/Todos/Store.fs`   | In-memory store via `MailboxProcessor`                   |
 
 The codebase follows **vertical slice architecture**. The `Todos/` directory is a self-contained feature slice owning its domain types, store, handlers, and route registration.
 
-Modules correspond to file paths relative to the project root (e.g., `Todos/Models.fs` → `module OxpeckerApi.Todos.Models`). Cross-cutting concerns (`Auth`, `Middleware`, `OpenApi`) live at the root.
+Modules correspond to file paths relative to the project root (e.g., `Todos/Models.fs` → `module OxpeckerApi.Todos.Models`). Cross-cutting concerns (`Auth`, `Middleware`, `OpenApi`) live at the project root.
+
+## Solution Structure
+
+```
+OxpeckerApi.slnx          # Solution file (XML-based .slnx format)
+src/
+  OxpeckerApi/            # Web API project
+```
 
 ## Architecture
 
-### Store (`Todos/Store.fs`)
+### Store (`src/OxpeckerApi/Todos/Store.fs`)
 
 An actor-based in-memory store using `MailboxProcessor` to serialize state mutations. The message DU is `private` — external code must use the module-level functions:
 
@@ -60,7 +70,7 @@ An actor-based in-memory store using `MailboxProcessor` to serialize state mutat
 - All mutations are single-threaded through the agent's mailbox
 - Async replies use `PostAndAsyncReply`; fire-and-forget uses `Post`
 
-### Handlers (`Todos/Handlers.fs`)
+### Handlers (`src/OxpeckerApi/Todos/Handlers.fs`)
 
 Endpoint handlers follow a curried pattern:
 
@@ -74,7 +84,7 @@ let getTodo (store : Store.t) (id : Guid) : EndpointHandler = ...
 
 All handlers return `EndpointHandler` (a function `HttpContext → Task`), using `task { }` computation expressions. Response writing uses `ctx.WriteJson`, status codes via `ctx.SetStatusCode`.
 
-### Middleware (`Middleware.fs`)
+### Middleware (`src/OxpeckerApi/Middleware.fs`)
 
 Shared middleware extracted from the handlers layer:
 
@@ -83,7 +93,7 @@ Shared middleware extracted from the handlers layer:
 
 Both are imported by slice handlers that need them.
 
-### Routes (`Todos/Routes.fs`)
+### Routes (`src/OxpeckerApi/Todos/Routes.fs`)
 
 Each vertical slice owns its route definitions and OpenAPI metadata in a single file. The `endpoints` function returns an `Endpoint list` passed to `app.UseOxpecker`. Routes are organized by HTTP method using Oxpecker's `GET`, `POST`, `PUT`, `DELETE` list builders. Route patterns:
 
@@ -93,7 +103,7 @@ Each vertical slice owns its route definitions and OpenAPI metadata in a single 
 
 OpenAPI metadata is attached inline via `addOpenApi` with `OpenApiConfig`, specifying request/response body types and operation-level config (summary, description, security requirements).
 
-### Auth (`Auth.fs`)
+### Auth (`src/OxpeckerApi/Auth.fs`)
 
 A custom `AuthenticationHandler` that accepts a hardcoded bearer token. Constants:
 
@@ -102,7 +112,7 @@ A custom `AuthenticationHandler` that accepts a hardcoded bearer token. Constant
 
 Valid request: `Authorization: Bearer demo-token`
 
-### OpenAPI (`OpenApi.fs`)
+### OpenAPI (`src/OxpeckerApi/OpenApi.fs`)
 
 Contains `FSharpRecordSchemaTransformer` and references `FSharpOptionSchemaTransformer` (from the Oxpecker.OpenApi NuGet package). The record transformer marks non-option fields as required in the generated schema.
 
@@ -133,7 +143,7 @@ Errors use a record type `{ Error: string; Details: string }` serialized as JSON
 
 - **Lockfile is enforced**: `RestorePackagesWithLockFile` is true in the `.fsproj`. After adding/updating NuGet packages, run `dotnet restore --lock-file-mode update` to regenerate `packages.lock.json`.
 - **Compilation order matters in .fsproj**: adding a new `.fs` file requires inserting `<Compile Include="NewFile.fs" />` at the correct position before any file that depends on it.
-- **No test project exists** — this is a demonstration API only.
+- **No test project exists yet** — add one under `src/OxpeckerApi.Tests/` to keep the multi-project convention.
 - **`FSharpOptionSchemaTransformer`** is defined in the `Oxpecker.OpenApi` package, not in the project's `OpenApi.fs`. The file only contains `FSharpRecordSchemaTransformer`.
 - **`TodoMessage` DU is `private`** — you cannot construct these messages directly; use the module functions on `Store`.
 - **Store is ephemeral** — all data is lost on restart (in-memory `Map`).
