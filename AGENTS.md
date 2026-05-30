@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> **Template setup:** run `./setup.sh <ProjectName>` to rename the project after cloning.
+
 ## Project Overview
 
 An F# .NET 10 web API example using the Oxpecker web framework. Implements a todo CRUD API with in-memory storage, bearer auth, and OpenAPI documentation rendered via Scalar.
