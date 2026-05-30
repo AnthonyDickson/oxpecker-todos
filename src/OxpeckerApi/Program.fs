@@ -26,6 +26,7 @@ let main (args : string array) : int =
         .AddOpenApi (fun options ->
             options.AddSchemaTransformer<FSharpOptionSchemaTransformer> () |> ignore
             options.AddSchemaTransformer<FSharpRecordSchemaTransformer> () |> ignore
+            options.AddSchemaTransformer<XmlDocSchemaTransformer> () |> ignore
 
             options.AddDocumentTransformer (fun doc _ _ ->
                 if isNull doc.Components then
