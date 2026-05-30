@@ -1,8 +1,8 @@
 [<RequireQualifiedAccess>]
-module OxpeckerApi.TodoStore
+module OxpeckerApi.Todos.Store
 
-open System // For `Guid`
-open OxpeckerApi.Models
+open System
+open OxpeckerApi.Todos.Models
 
 type TodoMessage =
     private

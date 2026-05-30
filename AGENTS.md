@@ -17,7 +17,7 @@ dotnet run
 dotnet fantomas .
 
 # Lint
-dotnet fsharplint lint *.fs
+dotnet fsharplint lint OxpeckerApi.fsproj
 ```
 
 ### Development Environment
@@ -34,49 +34,64 @@ Local .NET tools (fantomas, fsharplint) are defined in `.config/dotnet-tools.jso
 
 F# compiles files in order. The `.fsproj` defines this sequence — **new files must be inserted at the correct position**:
 
-| File | Purpose |
-|------|---------|
-| `Models.fs` | Domain types (`TodoItem` record) |
-| `TodoStore.fs` | In-memory store via `MailboxProcessor` |
-| `Auth.fs` | Demo bearer authentication handler |
-| `Handlers.fs` | Endpoint handlers + request/error DTOs |
-| `OpenApi.fs` | F#-aware OpenAPI schema transformers |
-| `Program.fs` | App composition: DI, routing, middleware |
+| File                | Purpose                                                  |
+| ------------------- | -------------------------------------------------------- |
+| `Auth.fs`           | Demo bearer authentication handler                       |
+| `Middleware.fs`     | Shared middleware (`notFound`, `requireAuthenticated`)   |
+| `OpenApi.fs`        | F#-aware OpenAPI schema transformers                     |
+| `Program.fs`        | App composition: DI, middleware pipeline                 |
+| `Todos/Handlers.fs` | CRUD endpoint handlers                                   |
+| `Todos/Models.fs`   | Domain types (`TodoItem`) + request/error DTOs           |
+| `Todos/Routes.fs`   | Route definitions + OpenAPI metadata for the Todos slice |
+| `Todos/Store.fs`    | In-memory store via `MailboxProcessor`                   |
 
-**All files** are in the same `OxpeckerApi` namespace root. Each module corresponds to the filename (e.g., `Models.fs` → `module OxpeckerApi.Models`).
+The codebase follows **vertical slice architecture**. The `Todos/` directory is a self-contained feature slice owning its domain types, store, handlers, and route registration.
+
+Modules correspond to file paths relative to the project root (e.g., `Todos/Models.fs` → `module OxpeckerApi.Todos.Models`). Cross-cutting concerns (`Auth`, `Middleware`, `OpenApi`) live at the root.
 
 ## Architecture
 
-### TodoStore (`TodoStore.fs`)
+### Store (`Todos/Store.fs`)
 
 An actor-based in-memory store using `MailboxProcessor` to serialize state mutations. The message DU is `private` — external code must use the module-level functions:
 
-- `TodoStore.t` is a type alias: `MailboxProcessor<TodoMessage>`
-- `TodoStore.start ()` creates the agent with an empty `Map<Guid, TodoItem>`
+- `Store.t` is a type alias: `MailboxProcessor<TodoMessage>`
+- `Store.start ()` creates the agent with an empty `Map<Guid, TodoItem>`
 - All mutations are single-threaded through the agent's mailbox
 - Async replies use `PostAndAsyncReply`; fire-and-forget uses `Post`
 
-### Handlers (`Handlers.fs`)
+### Handlers (`Todos/Handlers.fs`)
 
 Endpoint handlers follow a curried pattern:
 
 ```fsharp
 // No route params: store → EndpointHandler
-let getTodos (store : TodoStore.t) : EndpointHandler = ...
+let getTodos (store : Store.t) : EndpointHandler = ...
 
 // Route params: store → param → EndpointHandler  
-let getTodo (store : TodoStore.t) (id : Guid) : EndpointHandler = ...
+let getTodo (store : Store.t) (id : Guid) : EndpointHandler = ...
 ```
 
 All handlers return `EndpointHandler` (a function `HttpContext → Task`), using `task { }` computation expressions. Response writing uses `ctx.WriteJson`, status codes via `ctx.SetStatusCode`.
 
-### Routing (`Program.fs`)
+### Middleware (`Middleware.fs`)
 
-Routes are organized by HTTP method using Oxpecker's `GET`, `POST`, `PUT`, `DELETE` list builders. Route patterns:
+Shared middleware extracted from the handlers layer:
+
+- `notFound msg` — writes a 404 JSON error response
+- `requireAuthenticated` — gates requests behind bearer auth; returns 401 if unauthenticated
+
+Both are imported by slice handlers that need them.
+
+### Routes (`Todos/Routes.fs`)
+
+Each vertical slice owns its route definitions and OpenAPI metadata in a single file. The `endpoints` function returns an `Endpoint list` passed to `app.UseOxpecker`. Routes are organized by HTTP method using Oxpecker's `GET`, `POST`, `PUT`, `DELETE` list builders. Route patterns:
 
 - Static: `route "/todos"`
 - Parameterized: `routef "/todos/{%O:guid}" handler` — the parameter is passed as an additional argument to the handler
 - Middleware composition: `(requireAuthenticated >=> handler)` uses kleisli composition
+
+OpenAPI metadata is attached inline via `addOpenApi` with `OpenApiConfig`, specifying request/response body types and operation-level config (summary, description, security requirements).
 
 ### Auth (`Auth.fs`)
 
@@ -108,7 +123,7 @@ Route-level OpenAPI metadata is attached via `addOpenApi` with `OpenApiConfig`, 
 - Functions use camelCase
 - Types (records, DUs) use PascalCase
 - `[<Literal>]` constants use PascalCase
-- `[<RequireQualifiedAccess>]` on modules that expose a type alias (e.g., `TodoStore`) to avoid naming collisions
+- `[<RequireQualifiedAccess>]` on modules that expose a type alias (e.g., `Store`) to avoid naming collisions
 
 ### Error Handling
 
@@ -120,5 +135,5 @@ Errors use a record type `{ Error: string; Details: string }` serialized as JSON
 - **Compilation order matters in .fsproj**: adding a new `.fs` file requires inserting `<Compile Include="NewFile.fs" />` at the correct position before any file that depends on it.
 - **No test project exists** — this is a demonstration API only.
 - **`FSharpOptionSchemaTransformer`** is defined in the `Oxpecker.OpenApi` package, not in the project's `OpenApi.fs`. The file only contains `FSharpRecordSchemaTransformer`.
-- **`TodoMessage` DU is `private`** — you cannot construct these messages directly; use the module functions on `TodoStore`.
+- **`TodoMessage` DU is `private`** — you cannot construct these messages directly; use the module functions on `Store`.
 - **Store is ephemeral** — all data is lost on restart (in-memory `Map`).

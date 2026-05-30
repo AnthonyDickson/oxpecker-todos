@@ -1,56 +1,24 @@
-module OxpeckerApi.Handlers
+module OxpeckerApi.Todos.Handlers
 
-open Oxpecker
-open OxpeckerApi.Auth
-open OxpeckerApi.Models
-open OxpeckerApi
 open System
-
-type CreateTodoRequest = { Title : string }
-
-type UpdateTodoRequest = { Title : string; Completed : bool }
-
-type ApiError = { Error : string; Details : string }
-
-let private notFound (msg : string) : EndpointHandler =
-    fun ctx ->
-        ctx.SetStatusCode 404
-        ctx.WriteJson { Error = "Not Found"; Details = msg }
-
-let requireAuthenticated : EndpointMiddleware =
-    fun next ctx ->
-        task {
-            if
-                not (isNull ctx.User)
-                && not (isNull ctx.User.Identity)
-                && ctx.User.Identity.IsAuthenticated
-            then
-                return! next ctx
-            else
-                ctx.SetStatusCode 401
-
-                return!
-                    ctx.WriteJson {
-                        Error = "Unauthorized"
-                        Details = $"Provide Authorization: Bearer {DemoToken}"
-                    }
-        }
-
-// ── Handlers ─────────────────────────────────────────────────────────────────
+open Oxpecker
+open OxpeckerApi.Todos.Models
+open OxpeckerApi.Todos
+open OxpeckerApi.Middleware
 
 /// GET /todos — list all items
-let getTodos (store : TodoStore.t) : EndpointHandler =
+let getTodos (store : Store.t) : EndpointHandler =
     fun ctx ->
         task {
-            let! items = TodoStore.getAll store
+            let! items = Store.getAll store
             return! ctx.WriteJson items
         }
 
 /// GET /todos/{id} — get one item
-let getTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
+let getTodo (store : Store.t) (id : Guid) : EndpointHandler =
     fun ctx ->
         task {
-            let! todo = TodoStore.get store id
+            let! todo = Store.get store id
 
             match todo with
             | Some item -> return! ctx.WriteJson item
@@ -58,15 +26,15 @@ let getTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
         }
 
 /// GET /private-todos — protected demo route
-let getPrivateTodos (store : TodoStore.t) : EndpointHandler =
+let getPrivateTodos (store : Store.t) : EndpointHandler =
     fun ctx ->
         task {
-            let! items = TodoStore.getAll store
+            let! items = Store.getAll store
             return! ctx.WriteJson items
         }
 
 /// POST /todos — create an item
-let createTodo (store : TodoStore.t) : EndpointHandler =
+let createTodo (store : Store.t) : EndpointHandler =
     fun ctx ->
         task {
             let! req = ctx.BindJson<CreateTodoRequest> ()
@@ -87,13 +55,13 @@ let createTodo (store : TodoStore.t) : EndpointHandler =
                     CreatedAt = DateTime.UtcNow
                 }
 
-                TodoStore.upsert store item
+                Store.upsert store item
                 ctx.SetStatusCode 201
                 return! ctx.WriteJson item
         }
 
 /// PUT /todos/{id} — replace an item
-let updateTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
+let updateTodo (store : Store.t) (id : Guid) : EndpointHandler =
     fun ctx ->
         task {
             let! req = ctx.BindJson<UpdateTodoRequest> ()
@@ -107,7 +75,7 @@ let updateTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
                         Details = "Title is required"
                     }
             else
-                let! updated = TodoStore.update store id (req.Title.Trim ()) req.Completed
+                let! updated = Store.update store id (req.Title.Trim ()) req.Completed
 
                 match updated with
                 | Some updated -> return! ctx.WriteJson updated
@@ -115,10 +83,10 @@ let updateTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
         }
 
 /// DELETE /todos/{id} — remove an item
-let deleteTodo (store : TodoStore.t) (id : Guid) : EndpointHandler =
+let deleteTodo (store : Store.t) (id : Guid) : EndpointHandler =
     fun ctx ->
         task {
-            let! deleted = TodoStore.delete store id
+            let! deleted = Store.delete store id
 
             if deleted then
                 ctx.SetStatusCode 204
