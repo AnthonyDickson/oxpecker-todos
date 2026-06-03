@@ -1,4 +1,4 @@
-module OxpeckerApi.Todos.Models
+namespace OxpeckerApi.Todos.Models
 
 open System
 

@@ -1,5 +1,4 @@
-[<RequireQualifiedAccess>]
-module OxpeckerApi.Todos.Store
+namespace OxpeckerApi.Todos.Store
 
 open System
 open OxpeckerApi.Todos.Models
@@ -12,56 +11,58 @@ type TodoMessage =
     | Update of Guid * title : string * completed : bool * AsyncReplyChannel<TodoItem option>
     | Delete of Guid * AsyncReplyChannel<bool>
 
-type t = MailboxProcessor<TodoMessage>
+type TodoStore = MailboxProcessor<TodoMessage>
 
-let start () : t =
-    MailboxProcessor.Start (fun inbox ->
-        let rec loop (state : Map<Guid, TodoItem>) =
-            async {
-                let! msg = inbox.Receive ()
+module TodoStore =
 
-                match msg with
-                | GetAll reply ->
-                    reply.Reply (state.Values |> Seq.toList)
-                    return! loop state
-                | Get (todoId, reply) ->
-                    reply.Reply (state.TryFind todoId)
-                    return! loop state
-                | Upsert todoItem -> return! loop <| state.Add (todoItem.Id, todoItem)
-                | Update (id, text, completed, reply) ->
-                    match state.TryFind id with
-                    | Some todo ->
-                        let updated = {
-                            todo with
-                                Title = text
-                                Completed = completed
-                        }
+    let start () : TodoStore =
+        MailboxProcessor.Start (fun inbox ->
+            let rec loop (state : Map<Guid, TodoItem>) =
+                async {
+                    let! msg = inbox.Receive ()
 
-                        let nextState = state.Add (id, updated)
-
-                        reply.Reply <| Some updated
-                        return! loop nextState
-                    | None ->
-                        reply.Reply None
+                    match msg with
+                    | GetAll reply ->
+                        reply.Reply (state.Values |> Seq.toList)
                         return! loop state
-                | Delete (id, reply) ->
-                    let existed = state.ContainsKey id
-                    let nextState = if existed then state.Remove id else state
-                    reply.Reply existed
-                    return! loop nextState
-            }
+                    | Get (todoId, reply) ->
+                        reply.Reply (state.TryFind todoId)
+                        return! loop state
+                    | Upsert todoItem -> return! loop <| state.Add (todoItem.Id, todoItem)
+                    | Update (id, text, completed, reply) ->
+                        match state.TryFind id with
+                        | Some todo ->
+                            let updated = {
+                                todo with
+                                    Title = text
+                                    Completed = completed
+                            }
 
-        loop Map.empty)
+                            let nextState = state.Add (id, updated)
 
-let getAll (todoStore : t) : Async<TodoItem list> = todoStore.PostAndAsyncReply GetAll
+                            reply.Reply <| Some updated
+                            return! loop nextState
+                        | None ->
+                            reply.Reply None
+                            return! loop state
+                    | Delete (id, reply) ->
+                        let existed = state.ContainsKey id
+                        let nextState = if existed then state.Remove id else state
+                        reply.Reply existed
+                        return! loop nextState
+                }
 
-let get (todoStore : t) (todoId : Guid) : Async<TodoItem option> =
-    todoStore.PostAndAsyncReply (fun reply -> Get (todoId, reply))
+            loop Map.empty)
 
-let upsert (todoStore : t) (todo : TodoItem) : unit = todoStore.Post (Upsert todo)
+    let getAll (todoStore : TodoStore) : Async<TodoItem list> = todoStore.PostAndAsyncReply GetAll
 
-let update (todoStore : t) (id : Guid) (title : string) (completed : bool) : Async<TodoItem option> =
-    todoStore.PostAndAsyncReply (fun reply -> Update (id, title, completed, reply))
+    let get (todoStore : TodoStore) (todoId : Guid) : Async<TodoItem option> =
+        todoStore.PostAndAsyncReply (fun reply -> Get (todoId, reply))
 
-let delete (todoStore : t) (todoId : Guid) : Async<bool> =
-    todoStore.PostAndAsyncReply (fun reply -> Delete (todoId, reply))
+    let upsert (todoStore : TodoStore) (todo : TodoItem) : unit = todoStore.Post (Upsert todo)
+
+    let update (todoStore : TodoStore) (id : Guid) (title : string) (completed : bool) : Async<TodoItem option> =
+        todoStore.PostAndAsyncReply (fun reply -> Update (id, title, completed, reply))
+
+    let delete (todoStore : TodoStore) (todoId : Guid) : Async<bool> =
+        todoStore.PostAndAsyncReply (fun reply -> Delete (todoId, reply))

@@ -8,7 +8,8 @@ open Oxpecker
 open Oxpecker.OpenApi
 open OxpeckerApi.Auth
 open OxpeckerApi.OpenApi
-open OxpeckerApi.Todos
+open OxpeckerApi.Todos.Routes
+open OxpeckerApi.Todos.Store
 open Scalar.AspNetCore
 open System.Collections.Generic
 open System.Threading.Tasks
@@ -18,15 +19,15 @@ let main (args : string array) : int =
     let builder = WebApplication.CreateBuilder args
 
     builder.Services
-        .AddAuthentication(DemoScheme)
-        .AddScheme<AuthenticationSchemeOptions, DemoBearerAuthHandler>(DemoScheme, ignore)
+        .AddAuthentication(Auth.DemoScheme)
+        .AddScheme<AuthenticationSchemeOptions, Auth.DemoBearerAuthHandler>(Auth.DemoScheme, ignore)
         .Services.AddAuthorization()
         .AddRouting()
         .AddOxpecker()
         .AddOpenApi (fun options ->
             options.AddSchemaTransformer<FSharpOptionSchemaTransformer> () |> ignore
-            options.AddSchemaTransformer<FSharpRecordSchemaTransformer> () |> ignore
-            options.AddSchemaTransformer<XmlDocSchemaTransformer> () |> ignore
+            options.AddSchemaTransformer<OpenApi.FSharpRecordSchemaTransformer> () |> ignore
+            options.AddSchemaTransformer<OpenApi.XmlDocSchemaTransformer> () |> ignore
 
             options.AddDocumentTransformer (fun doc _ _ ->
                 if isNull doc.Components then
@@ -40,7 +41,7 @@ let main (args : string array) : int =
                         Type = SecuritySchemeType.Http,
                         Scheme = "bearer",
                         BearerFormat = "JWT",
-                        Description = $"Demo bearer token. Use `{DemoToken}`."
+                        Description = $"Demo bearer token. Use `{Auth.DemoToken}`."
                     )
 
                 Task.CompletedTask)
@@ -59,11 +60,11 @@ let main (args : string array) : int =
         |> ignore)
     |> ignore
 
-    let store = Store.start ()
+    let store = TodoStore.start ()
 
     app.UseRouting () |> ignore
     app.UseAuthentication () |> ignore
     app.UseAuthorization () |> ignore
-    app.UseOxpecker (Todos.Routes.endpoints store) |> ignore
+    app.UseOxpecker (TodoRoutes.endpoints store) |> ignore
     app.Run ()
     0
